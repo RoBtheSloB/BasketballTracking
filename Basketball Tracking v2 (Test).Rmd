@@ -1,0 +1,416 @@
+---
+title: "Basketball Tracking"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r libraries, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(gridExtra)
+library(ggthemes)
+library(scales)
+library(zoo)
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+library(toOrdinal)
+library(shiny)
+library(DT)
+library(rsconnect)
+
+rsconnect::setAccountInfo(name='robdaslob',
+			  token='77DFD7FDDE2622091A2CE41C3C40620B',
+			  secret='galxFmxQG+p05eH2jL11TafNmPbw7K2Wc7Zo3Egi')
+
+```
+
+
+```{r DataRead ,include=FALSE}
+## Read in data
+RawBasketballData <- readxl::read_excel("Basketball Stats.xlsx")
+
+## Reset point
+BasketballData <- RawBasketballData
+
+
+## Filtering out extra rows at bottom
+BasketballData <- BasketballData %>%
+  filter(!is.na(GameNumber))
+
+## Ben was injured and could not continue on 2018-11-10, Game # 17
+## Game counts toward Plus Minus but not toward win loss record
+NonContestDateAndGameNumber <- c("2018-11-10 - 17")
+
+## Getting the teammate dataset ready
+ScoringData <- BasketballData %>%
+  mutate(Id = c(1:nrow(BasketballData))) %>%
+  select(Id, GameNumber:PointsFor) %>%
+  spread(key = Player ,value = PointsFor) %>%
+  group_by(GameNumber) %>%
+  summarise(Alex = sum(Alex ,na.rm = T)
+            ,Andy = sum(Andy ,na.rm = T)
+            ,Ben = sum(Ben ,na.rm = T)
+            ,Evan = sum(Evan ,na.rm = T)
+            ,Jeff = sum(Jeff ,na.rm = T)
+            ,Phil = sum(Phil ,na.rm = T)
+            ,RoBert = sum(RoBert ,na.rm = T)
+            ,Tim = sum(Tim ,na.rm = T)) %>%
+  ungroup()
+
+TeammateData <- BasketballData %>%
+  left_join(ScoringData ,by = "GameNumber") %>%
+  mutate(PlusMinus = PointsFor - PointsAgainst
+         ,DateAndGameNumber = str_c(as.Date(Date) ,' - ' ,GameNumber)
+         ,Win = ifelse(DateAndGameNumber %in% NonContestDateAndGameNumber ,0 ,as.integer(PointsFor > PointsAgainst))
+         ,Loss = ifelse(DateAndGameNumber %in% NonContestDateAndGameNumber ,0 ,as.integer(PointsFor < PointsAgainst))
+         ,GameCount = ifelse(DateAndGameNumber %in% NonContestDateAndGameNumber ,0 ,1)
+         ,AlexTeammate = ifelse(PointsFor == Alex ,1 ,0)
+         ,AndyTeammate = ifelse(PointsFor == Andy ,1 ,0)
+         ,BenTeammate = ifelse(PointsFor == Ben ,1 ,0)
+         ,EvanTeammate = ifelse(PointsFor == Evan ,1 ,0)
+         ,JeffTeammate = ifelse(PointsFor == Jeff ,1 ,0)
+         ,PhilTeammate = ifelse(PointsFor == Phil ,1 ,0)
+         ,RoBertTeammate = ifelse(PointsFor == RoBert ,1 ,0)
+         ,TimTeammate= ifelse(PointsFor == Tim ,1 ,0)
+         ,AlexWins = ifelse(PointsFor == Alex & Win == 1 ,1 ,0)
+         ,AndyWins = ifelse(PointsFor == Andy & Win == 1 ,1 ,0)
+         ,BenWins = ifelse(PointsFor == Ben & Win == 1 ,1 ,0)
+         ,EvanWins = ifelse(PointsFor == Evan & Win == 1 ,1 ,0)
+         ,JeffWins = ifelse(PointsFor == Jeff & Win == 1 ,1 ,0)
+         ,PhilWins = ifelse(PointsFor == Phil & Win == 1 ,1 ,0)
+         ,RoBertWins = ifelse(PointsFor == RoBert & Win == 1 ,1 ,0)
+         ,TimWins= ifelse(PointsFor == Tim & Win == 1 ,1 ,0)    
+         ,AlexPlusMinus = ifelse(PointsFor == Alex ,PlusMinus ,0)
+         ,AndyPlusMinus = ifelse(PointsFor == Andy ,PlusMinus ,0)
+         ,BenPlusMinus = ifelse(PointsFor == Ben ,PlusMinus ,0)
+         ,EvanPlusMinus = ifelse(PointsFor == Evan ,PlusMinus ,0)
+         ,JeffPlusMinus = ifelse(PointsFor == Jeff ,PlusMinus ,0)
+         ,PhilPlusMinus = ifelse(PointsFor == Phil ,PlusMinus ,0)
+         ,RoBertPlusMinus = ifelse(PointsFor == RoBert ,PlusMinus ,0)
+         ,TimPlusMinus= ifelse(PointsFor == Tim ,PlusMinus ,0)  
+         ,AlexGamesInclNonContest = ifelse(PointsFor == Alex ,1 ,0)
+         ,AndyGamesInclNonContest = ifelse(PointsFor == Andy ,1 ,0)
+         ,BenGamesInclNonContest = ifelse(PointsFor == Ben ,1 ,0)
+         ,EvanGamesInclNonContest = ifelse(PointsFor == Evan ,1 ,0)
+         ,JeffGamesInclNonContest = ifelse(PointsFor == Jeff ,1 ,0)
+         ,PhilGamesInclNonContest = ifelse(PointsFor == Phil ,1 ,0)
+         ,RoBertGamesInclNonContest = ifelse(PointsFor == RoBert ,1 ,0)
+         ,TimGamesInclNonContest= ifelse(PointsFor == Tim ,1 ,0)          
+         ,AlexGames = ifelse(PointsFor == Alex & GameCount == 1 ,1 ,0)
+         ,AndyGames = ifelse(PointsFor == Andy & GameCount == 1 ,1 ,0)
+         ,BenGames = ifelse(PointsFor == Ben & GameCount == 1 ,1 ,0)
+         ,EvanGames = ifelse(PointsFor == Evan & GameCount == 1 ,1 ,0)
+         ,JeffGames = ifelse(PointsFor == Jeff & GameCount == 1 ,1 ,0)
+         ,PhilGames = ifelse(PointsFor == Phil & GameCount == 1 ,1 ,0)
+         ,RoBertGames = ifelse(PointsFor == RoBert & GameCount == 1 ,1 ,0)
+         ,TimGames= ifelse(PointsFor == Tim & GameCount == 1 ,1 ,0)          
+         ) %>%
+  select(GameNumber:PointsAgainst ,PlusMinus:TimGames)
+
+
+## Getting the teammate games data into the necessary format for a chart
+TeammateChartData <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(Alex = sum(AlexTeammate ,na.rm = T)
+            ,Andy = sum(AndyTeammate ,na.rm = T)
+            ,Ben = sum(BenTeammate ,na.rm = T)
+            ,Evan = sum(EvanTeammate ,na.rm = T)
+            ,Jeff = sum(JeffTeammate ,na.rm = T)
+            ,Phil = sum(PhilTeammate ,na.rm = T)
+            ,RoBert = sum(RoBertTeammate ,na.rm = T)
+            ,Tim = sum(TimTeammate ,na.rm = T)) %>%
+  gather(key = "Teammate" ,value = "Games" ,Alex:Tim) %>%
+  filter(Teammate != Player) %>%
+  arrange(Player ,desc(Games))
+
+
+## Getting list of Players
+PlayerNames <- TeammateChartData %>%
+  select(Player) %>%
+  unique() 
+
+## Getting Player with best Plus Minus
+TopPlusMinusPlayer <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(PlusMinus = sum(PlusMinus ,na.rm = T)) %>%
+  top_n(1 ,wt = PlusMinus) %>%
+  select(Player) %>%
+  as.character()
+
+## Get the Plus Minus for all players
+PlusMinusData <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(PlusMinus = sum(PlusMinus ,na.rm = T))
+
+
+## Get the Win Percent for all players
+WinPercentData <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(Alex = round(sum(AlexWins ,na.rm = T) / sum(AlexGames ,na.rm = T) ,3)
+            ,Andy = round(sum(AndyWins ,na.rm = T) / sum(AndyGames ,na.rm = T) ,3)
+            ,Ben = round(sum(BenWins ,na.rm = T) / sum(BenGames ,na.rm = T) ,3)
+            ,Evan = round(sum(EvanWins ,na.rm = T) / sum(EvanGames ,na.rm = T) ,3)
+            ,Jeff = round(sum(JeffWins ,na.rm = T) / sum(JeffGames ,na.rm = T) ,3)
+            ,Phil = round(sum(PhilWins ,na.rm = T) / sum(PhilGames ,na.rm = T) ,3)
+            ,RoBert = round(sum(RoBertWins ,na.rm = T) / sum(RoBertGames ,na.rm = T) ,3)
+            ,Tim = round(sum(TimWins ,na.rm = T) / sum(TimGames ,na.rm = T) ,3)) %>%
+  gather(key = "Teammate" ,value = "WinPercent" ,Alex:Tim) %>%
+  filter(Teammate != Player) %>%
+  arrange(Player ,desc(WinPercent))
+
+
+## Get the Win Percent by Player
+WinPercentByPlayer <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(PlayerWinPercent = round(sum(Win ,na.rm = T) / sum(GameCount ,na.rm = T) ,3))
+  
+## Get cumulative Plus Minus Data by Player
+CumulativePlusMinusData <- TeammateData %>%
+  group_by(Player) %>%
+  mutate(CumSum = cumsum(PlusMinus)) 
+
+## Getting max & min plus minus across all players for chart
+MaxCumulativePlusMinus <- CumulativePlusMinusData %>%
+  ungroup() %>%
+  summarise(max(CumSum)) %>%
+  as.integer()
+
+MinCumulativePlusMinus <- CumulativePlusMinusData %>%
+  ungroup() %>%
+  summarise(min(CumSum)) %>%
+  as.integer()
+
+## Getting the Plus Minus per 4 games by Teammate
+PlusMinusByTeammate <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(Alex = round(sum(AlexPlusMinus ,na.rm = T) / sum(AlexGamesInclNonContest ,na.rm = T) ,3)
+            ,Andy = round(sum(AndyPlusMinus ,na.rm = T) / sum(AndyGamesInclNonContest ,na.rm = T) ,3)
+            ,Ben = round(sum(BenPlusMinus ,na.rm = T) / sum(BenGamesInclNonContest ,na.rm = T) ,3)
+            ,Evan = round(sum(EvanPlusMinus ,na.rm = T) / sum(EvanGamesInclNonContest ,na.rm = T) ,3)
+            ,Jeff = round(sum(JeffPlusMinus ,na.rm = T) / sum(JeffGamesInclNonContest ,na.rm = T) ,3)
+            ,Phil = round(sum(PhilPlusMinus ,na.rm = T) / sum(PhilGamesInclNonContest ,na.rm = T) ,3)
+            ,RoBert = round(sum(RoBertPlusMinus ,na.rm = T) / sum(RoBertGamesInclNonContest ,na.rm = T) ,3)
+            ,Tim = round(sum(TimPlusMinus ,na.rm = T) / sum(TimGamesInclNonContest ,na.rm = T) ,3)) %>%
+  gather(key = "Teammate" ,value = "PlusMinus" ,Alex:Tim) %>%
+  filter(Teammate != Player) %>%
+  arrange(Player ,desc(PlusMinus))
+
+## Getting max & min plus minus by teammate for chart
+MaxTeammatePlusMinus <- PlusMinusByTeammate %>%
+  ungroup() %>%
+  summarise(max(PlusMinus)) %>%
+  as.numeric()
+
+MinTeammatePlusMinus <- PlusMinusByTeammate %>%
+  ungroup() %>%
+  summarise(min(PlusMinus)) %>%
+  as.numeric()
+
+```
+
+
+Basketball Tracking
+=======================================================================
+
+Column {data-width=200 .sidebar}
+-----------------------------------------------------------------------
+```{r}
+
+selectInput("PlayerInput"
+            ,"Select a player:"
+            ,choices = PlayerNames$Player
+            ,selected = TopPlusMinusPlayer)
+
+```
+
+
+
+Column {data-width=450}
+-----------------------------------------------------------------------
+
+### Current Plus Minus
+
+```{r}
+
+ReactivePlusMinusData <- reactive({
+  PlusMinusData %>%
+    filter(Player == input$PlayerInput)
+})
+
+renderValueBox(
+  valueBox(ReactivePlusMinusData() %>% select(PlusMinus)
+           ,icon = "fa-arrows-v"
+           ,color = ifelse(ReactivePlusMinusData() %>% select(PlusMinus) > 5, "success", ifelse(ReactivePlusMinusData() %>% select(PlusMinus) > -6 ,"warning" ,"danger")))
+)
+
+
+```
+
+### Plus Minus per game by Teammate
+
+```{r}
+
+ReactivePlusMinusByTeammate <- reactive({
+  PlusMinusByTeammate %>%
+    filter(Player == input$PlayerInput)
+})
+
+
+renderPlot({
+  ggplot(ReactivePlusMinusByTeammate() ,aes(x = reorder(Teammate ,PlusMinus ,function(x) {x}) ,y = PlusMinus ,fill = PlusMinus)) +
+    geom_col() +
+    coord_flip() +
+    scale_y_continuous(limits = c(MinTeammatePlusMinus ,MaxTeammatePlusMinus)) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen") ,limit = c(MinTeammatePlusMinus ,MaxTeammatePlusMinus)) +    
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()      
+})
+
+```
+
+
+### Plus Minus Over Time 
+
+```{r}
+
+ReactiveCumulativePlusMinusData <- reactive({
+  CumulativePlusMinusData %>%
+    filter(Player == input$PlayerInput)
+})
+
+
+renderPlot({
+  ggplot(ReactiveCumulativePlusMinusData() ,aes(x = GameNumber ,y = CumSum ,fill = CumSum)) +
+    geom_col() +
+    scale_y_continuous(limits = c(MinCumulativePlusMinus ,MaxCumulativePlusMinus)) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Game Number" ,fill = "Plus Minus") +
+    # scale_fill_brewer(palette = "Set1") +
+    scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen") ,limit = c(MinCumulativePlusMinus ,MaxCumulativePlusMinus)) +
+    theme_fivethirtyeight()    
+})
+
+
+
+```
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Player Win Percent 
+
+```{r}
+
+ReactiveWinPercent <- reactive({
+  WinPercentByPlayer %>%
+    filter(Player == input$PlayerInput) %>%
+    mutate(PlayerWinPercent2 = PlayerWinPercent * 100) %>%
+    select(PlayerWinPercent2) %>%
+    unique() %>%
+    as.numeric()
+})
+
+renderGauge({
+  gauge(ReactiveWinPercent() 
+        ,min = 0 
+        ,max = 100 
+        ,symbol = '%'
+        ,sectors = gaugeSectors(success = c(55 ,100) ,warning = c(45 ,54.9) ,danger = c(0 ,44.9)))
+})
+
+
+```
+
+
+### Win Percent by Teammate
+
+```{r}
+
+ReactiveWinPercentData <- reactive({
+  WinPercentData %>%
+    left_join(WinPercentByPlayer ,by = "Player") %>%
+    # mutate(Color = ifelse(PlayerWinPercent > .55 ,"green" ,ifelse(PlayerWinPercent > .45 ,"yellow" ,"red"))) %>%
+    filter(Player == input$PlayerInput)
+})
+
+ReactivePlayerWinPercentData <- reactive({
+  WinPercentByPlayer %>%
+    filter(Player == input$PlayerInput)
+})
+
+renderPlot({
+  ggplot(ReactiveWinPercentData() ,aes(x = reorder(Teammate ,WinPercent ,function(x) {x}) ,y = WinPercent)) +
+    geom_col() +
+    geom_hline(yintercept = ReactiveWinPercentData() %>% select(PlayerWinPercent) %>% unique() %>% as.numeric() 
+               # ,color = ReactiveWinPercentData() %>% select(Color) %>% unique() %>% as.character()
+               ) +
+    coord_flip() +
+    scale_y_continuous(limits = c(0 ,1) ,labels = scales::percent) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()    
+})
+
+```
+
+
+### Games Played with Teammate
+
+```{r}
+
+ReactiveTeammateChartData <- reactive({
+  TeammateChartData %>%
+    filter(Player == input$PlayerInput)
+})
+
+renderPlot({
+  ggplot(ReactiveTeammateChartData() ,aes(x = reorder(Teammate ,Games ,function(x) {x}) ,y = Games)) +
+    geom_col() +
+    coord_flip() +
+    # scale_y_continuous(labels = scales::pretty_breaks) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()    
+})
+
+```
+
+
+
+March Madness
+=======================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
