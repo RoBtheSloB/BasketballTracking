@@ -76,6 +76,14 @@ TeammateData <- BasketballData %>%
          ,PhilTeammate = ifelse(PointsFor == Phil ,1 ,0)
          ,RoBertTeammate = ifelse(PointsFor == RoBert ,1 ,0)
          ,TimTeammate= ifelse(PointsFor == Tim ,1 ,0)
+         ,AlexOpponent = ifelse(PointsFor != Alex ,1 ,0)
+         ,AndyOpponent = ifelse(PointsFor != Andy ,1 ,0)
+         ,BenOpponent = ifelse(PointsFor != Ben ,1 ,0)
+         ,EvanOpponent = ifelse(PointsFor != Evan ,1 ,0)
+         ,JeffOpponent = ifelse(PointsFor != Jeff ,1 ,0)
+         ,PhilOpponent = ifelse(PointsFor != Phil ,1 ,0)
+         ,RoBertOpponent = ifelse(PointsFor != RoBert ,1 ,0)
+         ,TimOpponent= ifelse(PointsFor != Tim ,1 ,0)         
          ,AlexWins = ifelse(PointsFor == Alex & Win == 1 ,1 ,0)
          ,AndyWins = ifelse(PointsFor == Andy & Win == 1 ,1 ,0)
          ,BenWins = ifelse(PointsFor == Ben & Win == 1 ,1 ,0)
@@ -127,6 +135,19 @@ TeammateChartData <- TeammateData %>%
   filter(Teammate != Player) %>%
   arrange(Player ,desc(Games))
 
+OpponentChartData <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(Alex = sum(AlexOpponent ,na.rm = T)
+            ,Andy = sum(AndyOpponent ,na.rm = T)
+            ,Ben = sum(BenOpponent ,na.rm = T)
+            ,Evan = sum(EvanOpponent ,na.rm = T)
+            ,Jeff = sum(JeffOpponent ,na.rm = T)
+            ,Phil = sum(PhilOpponent ,na.rm = T)
+            ,RoBert = sum(RoBertOpponent ,na.rm = T)
+            ,Tim = sum(TimOpponent ,na.rm = T)) %>%
+  gather(key = "Opponent" ,value = "Games" ,Alex:Tim) %>%
+  filter(Opponent != Player) %>%
+  arrange(Player ,desc(Games))
 
 ## Getting list of Players
 PlayerNames <- TeammateChartData %>%
@@ -386,6 +407,7 @@ renderPlot({
     theme_fivethirtyeight()    
 })
 
+shiny::tab
 ```
 
 
