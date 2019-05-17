@@ -215,6 +215,19 @@ WinPercentData <- TeammateData %>%
   filter(Teammate != Player) %>%
   arrange(Player ,desc(WinPercent))
 
+OpponentWinPercentData <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(Alex = round(sum(AlexOpponentWins ,na.rm = T) / sum(AlexOpponentGames ,na.rm = T) ,3)
+            ,Andy = round(sum(AndyOpponentWins ,na.rm = T) / sum(AndyOpponentGames ,na.rm = T) ,3)
+            ,Ben = round(sum(BenOpponentWins ,na.rm = T) / sum(BenOpponentGames ,na.rm = T) ,3)
+            ,Evan = round(sum(EvanOpponentWins ,na.rm = T) / sum(EvanOpponentGames ,na.rm = T) ,3)
+            ,Jeff = round(sum(JeffOpponentWins ,na.rm = T) / sum(JeffOpponentGames ,na.rm = T) ,3)
+            ,Phil = round(sum(PhilOpponentWins ,na.rm = T) / sum(PhilOpponentGames ,na.rm = T) ,3)
+            ,RoBert = round(sum(RoBertOpponentWins ,na.rm = T) / sum(RoBertOpponentGames ,na.rm = T) ,3)
+            ,Tim = round(sum(TimOpponentWins ,na.rm = T) / sum(TimOpponentGames ,na.rm = T) ,3)) %>%
+  gather(key = "Opponent" ,value = "WinPercent" ,Alex:Tim) %>%
+  filter(Opponent != Player) %>%
+  arrange(Player ,desc(WinPercent))
 
 ## Get the Win Percent by Player
 WinPercentByPlayer <- TeammateData %>%
@@ -286,6 +299,18 @@ MinOpponentPlusMinus <- PlusMinusByOpponent %>%
   ungroup() %>%
   summarise(min(PlusMinus)) %>%
   as.numeric()
+
+## Getting data for static Plus Minus chart
+CurrentPlusMinus <- TeammateData %>%
+  group_by(Player) %>%
+  summarise(PlusMinus = sum(PlusMinus))
+
+PlusMinusLevels <- CurrentPlusMinus %>%
+  arrange(PlusMinus ,desc(Player)) %>%
+  select(Player) %>%
+  unlist()
+
+CurrentPlusMinus$Player <- factor(CurrentPlusMinus$Player ,levels = PlusMinusLevels)
 
 ```
 
@@ -509,6 +534,79 @@ renderPlot({
 
 ```
 
+
+### Current Plus Minus Comparison
+
+```{r}
+renderPlot({
+ggplot(CurrentPlusMinus ,aes(x = Player ,y = PlusMinus ,fill = PlusMinus)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  # scale_fill_gradient(low = "indianred", high = "forestgreen") +
+  scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen")) +
+  theme_fivethirtyeight()
+})
+
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Win Percent by Opponent
+
+```{r}
+
+ReactiveOpponentWinPercentData <- reactive({
+  OpponentWinPercentData %>%
+    left_join(WinPercentByPlayer ,by = "Player") %>%
+    # mutate(Color = ifelse(PlayerWinPercent > .55 ,"green" ,ifelse(PlayerWinPercent > .45 ,"yellow" ,"red"))) %>%
+    filter(Player == input$PlayerInput2)
+})
+
+
+renderPlot({
+  ggplot(ReactiveOpponentWinPercentData() ,aes(x = reorder(Opponent ,WinPercent ,function(x) {x}) ,y = WinPercent)) +
+    geom_col() +
+    geom_hline(yintercept = ReactiveOpponentWinPercentData() %>% select(PlayerWinPercent) %>% unique() %>% as.numeric() 
+               # ,color = ReactiveWinPercentData() %>% select(Color) %>% unique() %>% as.character()
+               ) +
+    coord_flip() +
+    scale_y_continuous(limits = c(0 ,1) ,labels = scales::percent) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()    
+})
+
+```
+
+
+### Games Played against Opponent
+
+```{r}
+
+ReactiveOpponentChartData <- reactive({
+  OpponentChartData %>%
+    filter(Player == input$PlayerInput2)
+})
+
+renderPlot({
+  ggplot(ReactiveOpponentChartData() ,aes(x = reorder(Opponent ,Games ,function(x) {x}) ,y = Games)) +
+    geom_col() +
+    coord_flip() +
+    # scale_y_continuous(labels = scales::pretty_breaks) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()    
+})
+
+
+```
 
 March Madness
 =======================================================================
