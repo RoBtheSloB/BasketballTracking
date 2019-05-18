@@ -26,7 +26,7 @@ library(rsconnect)
 ```
 
 
-```{r DataRead ,include=FALSE}
+```{r DataReadBasketball ,include=FALSE}
 ## Read in data
 RawBasketballData <- readxl::read_excel("Basketball Stats.xlsx")
 
@@ -309,6 +309,86 @@ PlusMinusLevels <- CurrentPlusMinus %>%
 
 CurrentPlusMinus$Player <- factor(CurrentPlusMinus$Player ,levels = PlusMinusLevels)
 
+
+```
+
+```{r MarchMadness ,include=FALSE}
+RawMarchMadness <- readxl::read_excel("March Madness.xlsx" ,sheet = "Data")
+
+## Reset point
+MarchMadness <- RawMarchMadness
+
+## Remove spaces in column names
+OriginalColumnNames <- colnames(MarchMadness)
+colnames(MarchMadness) <- str_replace_all(colnames(MarchMadness) ,pattern = ' ' ,replacement = '')
+
+## Getting the slider ranges
+MinYear <- MarchMadness %>%
+  summarise(MinYear = min(YEAR)) %>%
+  as.integer()
+
+MaxYear <- MarchMadness %>%
+  summarise(MaxYear = max(YEAR)) %>%
+  as.integer()
+
+## Putting into chart format
+PointsChart <- MarchMadness %>%
+  select(YEAR:NCG) %>%
+  gather(key = "Round", value = "Points" ,R64:NCG)
+
+PicksChart <- MarchMadness %>%
+  select(YEAR:PLAYER ,R64Correct:NCGCorrect) %>%
+  gather(key = "Round", value = "Points" ,R64Correct:NCGCorrect)
+
+PicksChart <- PicksChart %>%  
+  mutate(Round = str_sub(Round ,start = 1 ,end = str_length(Round) - 7)) 
+
+## Factor for rounds
+RoundLevels <- c("R64" ,"R32" ,"S16" ,"E8" ,"F4" ,"NCG")
+PointsChart$Round <- factor(PointsChart$Round ,levels = RoundLevels)
+PicksChart$Round <- factor(PicksChart$Round ,levels = RoundLevels)
+
+
+## Getting data for a summary table
+Champion <- MarchMadness %>%
+  filter(RANK == 1) %>%
+  mutate(Champion = str_c(PLAYER ,' (' ,BRACKETNAME ,' - ' ,prettyNum(TOTAL ,big.mark = ',') ,' points)')) %>%
+  select(YEAR ,Champion)
+
+MostPicks <- MarchMadness %>%
+  group_by(YEAR) %>%
+  arrange(desc(TotalCorrect) ,desc(TOTAL) ,PLAYER) %>%
+  top_n(1) %>%
+  mutate(MostCorrect = str_c(PLAYER ,' - ' ,TotalCorrect ,' picks')) %>%
+  select(YEAR ,MostCorrect)
+
+LeastPicks <- MarchMadness %>%
+  group_by(YEAR) %>%
+  arrange(TotalCorrect ,TOTAL ,PLAYER) %>%
+  top_n(-1) %>%
+  mutate(LeastCorrect = str_c(PLAYER ,' - ' ,TotalCorrect ,' picks')) %>%
+  select(YEAR ,LeastCorrect)
+
+WorstRankByYear <- MarchMadness %>%
+  group_by(YEAR) %>%
+  summarise(WorstRank = max(RANK))
+
+LeastPoints <- MarchMadness %>%
+  inner_join(WorstRankByYear ,by = c("YEAR" ,"RANK" = "WorstRank")) %>%
+  mutate(LeastPoints = str_c(PLAYER ,' - ' ,prettyNum(TOTAL ,big.mark = ',') ,' points')) %>%
+  select(YEAR ,LeastPoints)
+
+CorrectChampions <- MarchMadness %>%
+  group_by(YEAR) %>%
+  summarise(CorrectChampionPicks = sum(NCGCorrect))
+
+SummaryTable <- Champion %>%
+  left_join(LeastPoints ,by = "YEAR") %>%
+  left_join(MostPicks ,by = "YEAR") %>%
+  left_join(LeastPicks ,by = "YEAR") %>%
+  left_join(CorrectChampions ,by = "YEAR") 
+
+colnames(SummaryTable) <- c("Year" ,"Champion" ,"Lowest Scorer" ,"Most Correct Picks" ,"Least Correct Picks" ,"Total Correct Champion Picks")
 
 ```
 
@@ -650,7 +730,93 @@ renderPlot({
 March Madness
 =======================================================================
 
+Column {data-width=200 .sidebar}
+-----------------------------------------------------------------------
+```{r Sidebar}
 
+sliderInput("YearSlider", 
+            label = "Select years to display:",
+            min = MinYear, 
+            max = MaxYear, 
+            value = c(MinYear,MaxYear), 
+            step = 1L)
+
+checkboxGroupInput("RoundCheckbox", 
+                   h3("Checkbox group"), 
+                   choices = as.list(RoundLevels),
+                   # choices = list("Choice 1" = 1, 
+                   #                "Choice 2" = 2, 
+                   #                "Choice 3" = 3),
+                   selected = as.list(RoundLevels))
+
+
+```
+
+
+Column {data-width=450}
+-----------------------------------------------------------------------
+
+### Total Points by Player
+
+```{r}
+
+ReactivePointsChart <- reactive({
+  PointsChart %>%
+    filter(YEAR %in% input$YearSlider & Round %in% input$RoundCheckbox) 
+    # filter(YEAR <= input$YearSlider[1] & YEAR >= input$YearSlider[2] & Round %in% input$RoundCheckbox) 
+})
+
+renderPlot({
+ggplot(ReactivePointsChart() ,aes(x = reorder(PLAYER, Points, function(x){ sum(x) } ),y = Points ,fill = as.factor(YEAR))) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  # ggtitle("Points by Player") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Player" ,fill = "Year") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_fivethirtyeight()  
+})
+
+ 
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Correct Picks by Player
+
+```{r}
+
+ReactivePicksChart <- reactive({
+  PicksChart %>%
+    filter(YEAR %in% input$YearSlider & Round %in% input$RoundCheckbox) 
+})
+
+renderPlot({
+ggplot(ReactivePicksChart() ,aes(x = reorder(PLAYER, Points, function(x){ sum(x) } ),y = Points ,fill = as.factor(YEAR))) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  # ggtitle("Picks by Player") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Player" ,fill = "Year") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_fivethirtyeight()  
+})
+
+
+
+```
+
+### Summary Table
+
+```{r}
+
+datatable(SummaryTable ,rownames = FALSE)
+
+```
 
 
 
