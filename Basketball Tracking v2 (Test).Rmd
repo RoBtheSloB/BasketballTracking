@@ -22,6 +22,7 @@ library(shiny)
 library(DT)
 library(rsconnect)
 
+
 ```
 
 
@@ -308,6 +309,7 @@ PlusMinusLevels <- CurrentPlusMinus %>%
 
 CurrentPlusMinus$Player <- factor(CurrentPlusMinus$Player ,levels = PlusMinusLevels)
 
+
 ```
 
 
@@ -505,6 +507,26 @@ selectInput("PlayerInput2"
 Column {data-width=450}
 -----------------------------------------------------------------------
 
+### Longest Win Streak
+
+```{r}
+
+ReactiveLongestWinStreak <- reactive({
+  TeammateData %>%
+    filter(Player == input$PlayerInput2 & !(DateAndGameNumber %in% NonContestDateAndGameNumber)) %>%
+    summarise(LongestWinStreak2 = max(rle(Win == 1)[[1]][rle(Win == 1)[[2]] == 1])) %>%
+    as.numeric()
+})
+
+
+renderValueBox(
+  valueBox(ReactiveLongestWinStreak()
+           ,color = ifelse(ReactiveLongestWinStreak() < 3 ,"danger" ,ifelse(ReactiveLongestWinStreak() < 5  ,"warning" ,"success")))
+)
+
+```
+
+
 ### Plus Minus per game by Opponent
 
 ```{r}
@@ -544,11 +566,32 @@ ggplot(CurrentPlusMinus ,aes(x = Player ,y = PlusMinus ,fill = PlusMinus)) +
   theme_fivethirtyeight()
 })
 
-
 ```
 
 Column {data-width=350}
 -----------------------------------------------------------------------
+
+### Current Win Streak
+
+```{r}
+ReactiveCurrentWinStreak <- reactive({
+  TeammateData %>%  
+    filter(Player == input$PlayerInput2 & !(DateAndGameNumber %in% NonContestDateAndGameNumber)) %>%
+    select(Win) %>%
+    summarise(Current = ifelse(rle(Win)$values[length(rle(Win)$values)] == 0 ,0 ,rle(Win)$lengths[length(rle(Win)$lengths)])) %>%
+    as.numeric()
+})
+
+
+renderValueBox(
+  valueBox(ReactiveCurrentWinStreak()
+           ,color = ifelse(ReactiveCurrentWinStreak() == 0, "danger" ,ifelse(ReactiveCurrentWinStreak() < 4  ,"warning" ,"success")))
+)
+
+
+
+```
+
 
 ### Win Percent by Opponent
 
