@@ -607,7 +607,7 @@ renderValueBox(
 ```
 
 
-### Plus Minus per game by Opponent
+### Plus Minus per game against Opponent
 
 ```{r}
 
@@ -673,7 +673,7 @@ renderValueBox(
 ```
 
 
-### Win Percent by Opponent
+### Win Percent against Opponent
 
 ```{r}
 
