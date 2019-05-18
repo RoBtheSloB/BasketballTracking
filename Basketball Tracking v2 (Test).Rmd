@@ -22,10 +22,6 @@ library(shiny)
 library(DT)
 library(rsconnect)
 
-rsconnect::setAccountInfo(name='robdaslob',
-			  token='77DFD7FDDE2622091A2CE41C3C40620B',
-			  secret='galxFmxQG+p05eH2jL11TafNmPbw7K2Wc7Zo3Egi')
-
 ```
 
 
