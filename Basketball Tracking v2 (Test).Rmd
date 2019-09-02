@@ -309,8 +309,40 @@ PlusMinusLevels <- CurrentPlusMinus %>%
 
 CurrentPlusMinus$Player <- factor(CurrentPlusMinus$Player ,levels = PlusMinusLevels)
 
+## Getting max & min plus minus by game 
+PlusMinusByGame <- CumulativePlusMinusData %>%
+  ungroup() %>%
+  group_by(GameNumber) %>%
+  summarise(MaxPlusMinus = max(CumSum)
+            ,MinPlusMinus = min(CumSum)) 
+
+## Adding the max / min plus minus by game to the original dataset
+CumulativePlusMinusData <- CumulativePlusMinusData %>%
+  left_join(PlusMinusByGame ,by = "GameNumber") %>%
+  mutate(King = ifelse(CumSum == MaxPlusMinus ,1 ,0)
+        ,Bottom = ifelse(CumSum == MinPlusMinus ,1 ,0))
+
+## Weeks as King or at Bottom
+WeeksAsKing <- CumulativePlusMinusData %>%
+  filter(GameNumber > 10) %>%
+  group_by(Player) %>%
+  summarise(WeeksAsKing = sum(King ,na.rm = T)
+            ,WeeksAtBottom = sum(Bottom ,na.rm = T))
+
+MaxWeeksAsKing <- WeeksAsKing %>%
+  ungroup() %>%
+  summarise(max(WeeksAsKing)) %>%
+  as.numeric()
+
+MaxWeeksAtBottom <- WeeksAsKing %>%
+  ungroup() %>%
+  summarise(max(WeeksAtBottom)) %>%
+  as.numeric()
+
+  
 
 ```
+
 
 ```{r MarchMadness ,include=FALSE}
 RawMarchMadness <- readxl::read_excel("March Madness.xlsx" ,sheet = "Data")
@@ -633,21 +665,6 @@ renderPlot({
 ```
 
 
-### Current Plus Minus Comparison
-
-```{r}
-renderPlot({
-ggplot(CurrentPlusMinus ,aes(x = Player ,y = PlusMinus ,fill = PlusMinus)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  # scale_fill_gradient(low = "indianred", high = "forestgreen") +
-  scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen")) +
-  theme_fivethirtyeight()
-})
-
-```
-
 Column {data-width=350}
 -----------------------------------------------------------------------
 
@@ -726,6 +743,91 @@ renderPlot({
 
 
 ```
+
+
+Cross Player Comparisons {data-navmenu="Basketball Tracking"}
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Weeks as King
+
+```{r}
+
+renderPlot({
+  ggplot(WeeksAsKing ,aes(x = reorder(Player ,WeeksAsKing ,function(x) {x}) ,y = WeeksAsKing ,fill = WeeksAsKing)) +
+    geom_col() +
+    coord_flip() +
+    scale_y_continuous(limits = c(0 ,MaxWeeksAsKing)) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen") ,limit = c(0 ,MaxWeeksAsKing)) +    
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()      
+})
+
+```
+
+### Weeks at Bottom
+
+```{r}
+
+renderPlot({
+ggplot(WeeksAsKing ,aes(x = reorder(Player ,WeeksAtBottom ,function(x) {x}) ,y = WeeksAtBottom ,fill = WeeksAtBottom)) +
+    geom_col() +
+    coord_flip() +
+    scale_y_continuous(limits = c(0 ,MaxWeeksAtBottom)) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    scale_fill_gradientn(colors = c("darkgreen", "palegreen","tomato1", "darkred") ,limit = c(0 ,MaxWeeksAtBottom)) +    
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()      
+})
+
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Current Plus Minus Comparison
+
+```{r}
+
+renderPlot({
+ggplot(CurrentPlusMinus ,aes(x = Player ,y = PlusMinus ,fill = PlusMinus)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  # scale_fill_gradient(low = "indianred", high = "forestgreen") +
+  scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen")) +
+  theme_fivethirtyeight()
+})
+
+```
+
+### Current Win Percent Comparison
+
+```{r}
+
+renderPlot({
+  ggplot(WinPercentByPlayer ,aes(x = reorder(Player ,PlayerWinPercent ,function(x) {x}) ,y = PlayerWinPercent)) +
+    geom_col() +
+    geom_hline(yintercept = .5) +
+    coord_flip() +
+    scale_y_continuous(limits = c(0 ,1) ,labels = scales::percent) +
+    # scale_fill_gradientn(colors = c("darkred", "tomato1","palegreen", "darkgreen")) +
+    # ggtitle("Points by Player") +
+    # theme(plot.title = element_text(hjust = 0.5)) +
+    labs(x = "Player") +
+    # scale_fill_brewer(palette = "Set1") +
+    theme_fivethirtyeight()   
+})
+
+```
+
 
 March Madness
 =======================================================================
