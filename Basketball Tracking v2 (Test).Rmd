@@ -326,17 +326,17 @@ CumulativePlusMinusData <- CumulativePlusMinusData %>%
 WeeksAsKing <- CumulativePlusMinusData %>%
   filter(GameNumber > 10) %>%
   group_by(Player) %>%
-  summarise(WeeksAsKing = sum(King ,na.rm = T)
-            ,WeeksAtBottom = sum(Bottom ,na.rm = T))
+  summarise(GamesAsKing = sum(King ,na.rm = T)
+            ,GamesAtBottom = sum(Bottom ,na.rm = T))
 
 MaxWeeksAsKing <- WeeksAsKing %>%
   ungroup() %>%
-  summarise(max(WeeksAsKing)) %>%
+  summarise(max(GamesAsKing)) %>%
   as.numeric()
 
 MaxWeeksAtBottom <- WeeksAsKing %>%
   ungroup() %>%
-  summarise(max(WeeksAtBottom)) %>%
+  summarise(max(GamesAtBottom)) %>%
   as.numeric()
 
   
@@ -751,12 +751,12 @@ Cross Player Comparisons {data-navmenu="Basketball Tracking"}
 Column {data-width=500}
 -----------------------------------------------------------------------
 
-### Weeks as King
+### Games as King
 
 ```{r}
 
 renderPlot({
-  ggplot(WeeksAsKing ,aes(x = reorder(Player ,WeeksAsKing ,function(x) {x}) ,y = WeeksAsKing ,fill = WeeksAsKing)) +
+  ggplot(WeeksAsKing ,aes(x = reorder(Player ,GamesAsKing ,function(x) {x}) ,y = GamesAsKing ,fill = GamesAsKing)) +
     geom_col() +
     coord_flip() +
     scale_y_continuous(limits = c(0 ,MaxWeeksAsKing)) +
@@ -770,12 +770,12 @@ renderPlot({
 
 ```
 
-### Weeks at Bottom
+### Games at Bottom
 
 ```{r}
 
 renderPlot({
-ggplot(WeeksAsKing ,aes(x = reorder(Player ,WeeksAtBottom ,function(x) {x}) ,y = WeeksAtBottom ,fill = WeeksAtBottom)) +
+ggplot(WeeksAsKing ,aes(x = reorder(Player ,GamesAtBottom ,function(x) {x}) ,y = GamesAtBottom ,fill = GamesAtBottom)) +
     geom_col() +
     coord_flip() +
     scale_y_continuous(limits = c(0 ,MaxWeeksAtBottom)) +
