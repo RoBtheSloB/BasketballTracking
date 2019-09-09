@@ -430,6 +430,9 @@ Player Performance by Teammate {data-navmenu="Basketball Tracking"}
 
 Column {data-width=200 .sidebar}
 -----------------------------------------------------------------------
+
+### Player Filter
+
 ```{r}
 
 selectInput("PlayerInput"
@@ -607,6 +610,9 @@ Rivalry Corner {data-navmenu="Basketball Tracking"}
 
 Column {data-width=200 .sidebar}
 -----------------------------------------------------------------------
+
+### Player Filter
+
 ```{r}
 
 selectInput("PlayerInput2"
@@ -834,6 +840,9 @@ March Madness
 
 Column {data-width=200 .sidebar}
 -----------------------------------------------------------------------
+
+### Filters
+
 ```{r Sidebar}
 
 sliderInput("YearSlider", 
