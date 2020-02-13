@@ -40,7 +40,8 @@ BasketballData <- BasketballData %>%
 
 ## Ben was injured and could not continue on 2018-11-10, Game # 17
 ## Game counts toward Plus Minus but not toward win loss record
-NonContestDateAndGameNumber <- c("2018-11-10 - 17")
+## Robert got hurt on 2020-02-18 and could not finish the game
+NonContestDateAndGameNumber <- c("2018-11-10 - 17" ,"2020-02-08 - 46")
 
 ## Getting the teammate dataset ready
 ScoringData <- BasketballData %>%
